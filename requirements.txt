@@ -1,0 +1,7 @@
+black
+numpy
+pandas
+matplotlib
+tqdm
+scikit-learn
+requests
