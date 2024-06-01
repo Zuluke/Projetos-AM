@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.metrics import adjusted_rand_score
 # from typing import 
 
 class KFCM_K_W1:
@@ -85,9 +86,9 @@ class KFCM_K_W1:
         diff = (self._X[:, np.newaxis, :] - self._G[np.newaxis, :, :]) ** 2
         denominator = np.sum(self._U ** self._m * K * np.sum(diff, axis=2))
         
-        #print(f'numerator = {numerator}')
-        #print(f'denominator = {denominator}')
-        self._s = numerator / denominator
+        # print(f'numerator = {numerator}')
+        # print(f'denominator = {denominator}')
+        self._s = numerator / np.maximum(denominator, 1e-20)
     
     def _update_G(self):
         K = self.compute_kernel(self._X, self._G, self._s)
@@ -96,12 +97,31 @@ class KFCM_K_W1:
         
         self._G = numerator / denominator
     
-    def fit(self, X):
+    
+    def calculate_modified_partition_coefficient(self):
+        pc = np.sum(self._U**2) / self._n
+        mpc = 1 - (self._n_clusters / (self._n_clusters - 1)) * (1 - pc)
+        return mpc
+
+    def _evaluate_adjusted_rand_score(self):
+        y_pred = np.argmax(self._U, axis=1)
+        print(self._y.shape, y_pred.shape)
+        return adjusted_rand_score(self._y, y_pred)
+
+    def evaluate(self):
+        return {
+            "MPC":self.calculate_modified_partition_coefficient(),
+            "rand": self._evaluate_adjusted_rand_score()
+        }
+        
+    
+    def fit(self, X, y=None):
         from sklearn.preprocessing import MinMaxScaler
         self._n, self._p = X.shape
-        # scaler = MinMaxScaler()
-        self._X = X #scaler.fit_transform(X)
-
+        scaler = MinMaxScaler()
+        self._X = scaler.fit_transform(X)
+        self._y = y
+        
         ## Initialization
         self._initialize_U()
         self._initialize_s()
@@ -124,9 +144,10 @@ class KFCM_K_W1:
             
             J_new = self.calculate_objective_function()
             
-            
-            print(f'Iteration {t+1}: J = {J_new}')    
-        
+            if self.verbose:
+                print(f'Iteration {t+1}: J = {J_new}')
+                print(self.evaluate())    
+
             if np.abs(J_new - J_old) < self._epsilon:
                 break
 
