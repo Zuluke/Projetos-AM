@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.metrics import adjusted_rand_score
+import pandas as pd
 # from typing import 
 
 class KFCM_K_W1:
@@ -22,8 +23,6 @@ class KFCM_K_W1:
             np.random.seed(random_state)
     
     def _initialize_U(self):
-        # self._U = np.random.rand(self._n_samples, self._n_clusters)
-        # self._U = self._U / np.sum(self._U, axis=1)[:, np.newaxis]
         self._U = np.zeros((self._n, self._n_clusters))
 
     def _initialize_s(self):
@@ -32,8 +31,6 @@ class KFCM_K_W1:
     def _initialize_g(self):
         indexes = np.random.choice(self._n, self._n_clusters, replace=False) 
         self._G = self._X[indexes, :]
-        #print("------ G ------")
-        #print(self._G)
     @staticmethod
     def compute_kernel(X_l, X_k, s):
         
@@ -43,26 +40,14 @@ class KFCM_K_W1:
         return np.exp(-0.5 * np.sum(s * (X_l - X_k)**2, axis=2))
 
     def _update_U(self):
-        #print("------ UPDATE U ------")
-        #print("------ G ------")
-        #print(self._G)
         K = self.compute_kernel(self._X, self._G, self._s)
-        #print("------ K ------")
-        #print(K)
         
         numerator = 2 - 2 * K[:, :, np.newaxis] # (n, c, 1)
         numerator = np.maximum(numerator, 1e-20)
         denominator = 2 - 2 * K[:, np.newaxis, :] # (n, 1, c)
-        denominator = np.maximum(denominator, 1e-20)
-        #print("------ Denominator ------")
-        #print(denominator)
-        #print("------ Numerator ------")
-        #print(numerator)
-        
+        denominator = np.maximum(denominator, 1e-20)        
         
         ratio = (numerator / denominator) ** (1 / (self._m - 1))
-        #print("------ U ------")
-        #print(1/np.sum(ratio, axis=2))
         self._U = 1/np.sum(ratio, axis=2)
     
     
@@ -78,16 +63,12 @@ class KFCM_K_W1:
         
         for h in range(self._p):
             diff_squared = (self._X[:, h][:, np.newaxis] - self._G[:, h][np.newaxis, :]) ** 2
-            #print('diff_squared', self._U ** self._m * K * diff_squared)
             total_sum = np.sum(self._U ** self._m * K * diff_squared)
-            #print('total_sum', total_sum)
             numerator *= total_sum ** (1 / self._p)
         
         diff = (self._X[:, np.newaxis, :] - self._G[np.newaxis, :, :]) ** 2
         denominator = np.sum(self._U ** self._m * K * np.sum(diff, axis=2))
         
-        # print(f'numerator = {numerator}')
-        # print(f'denominator = {denominator}')
         self._s = numerator / np.maximum(denominator, 1e-20)
     
     def _update_G(self):
@@ -103,15 +84,31 @@ class KFCM_K_W1:
         mpc = 1 - (self._n_clusters / (self._n_clusters - 1)) * (1 - pc)
         return mpc
 
-    def _evaluate_adjusted_rand_score(self):
+    def calculate_adjusted_rand_score(self):
         y_pred = np.argmax(self._U, axis=1)
-        print(self._y.shape, y_pred.shape)
         return adjusted_rand_score(self._y, y_pred)
+
+    def calculate_accuracy(self):
+        pred = np.argmax(self._U, axis=1)
+        y_with_pred = pd.DataFrame(np.concatenate((self._y[:, np.newaxis], pred[:, np.newaxis]), axis=1))
+        y_with_pred["value"] = 1
+        pivot_table = pd.pivot_table(
+            y_with_pred, columns=[0], index=[1], values="value", aggfunc="sum"
+        )
+        pivot_table = pivot_table.fillna(0).values
+
+        n_i = pivot_table.sum(axis=1)[:, np.newaxis]
+        p_ij = pivot_table / n_i
+        p_i = p_ij.max(axis=1)[:, np.newaxis]
+        acc = (n_i * p_i).sum(axis=0) / self._n
+        return acc[0]
 
     def evaluate(self):
         return {
+            "accuracy": self.calculate_accuracy(),
             "MPC":self.calculate_modified_partition_coefficient(),
-            "rand": self._evaluate_adjusted_rand_score()
+            "rand": self.calculate_adjusted_rand_score(),
+            "loss": self.calculate_objective_function(),
         }
         
     
