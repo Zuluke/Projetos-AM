@@ -1,0 +1,12 @@
+Os arquivos nesta pasta estão separados da seguinte forma:
+
+metrics_X_Y_s.csv, onde:
+
+> X indica o valor de m=1.X (1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9)
+
+> Y indica o dataset de referência
+>> 0 = mfeat-fac
+>> 1 = mfeat-fou
+>> 2 = mfeat-zer
+
+> cm se refere às matrizes de confusão

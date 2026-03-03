@@ -1,0 +1,12 @@
+Os arquivos complementares estão separados da seguinte forma:
+
+metrics_X_Y_G.csv e metrics_X_Y_s.csv, onde:
+
+> G se refere aos vetores protótipo e s ao vetor de largura
+
+> X indica o valor de m=1.X (1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9)
+
+> Y indica o dataset de referência
+>> 0 = mfeat-fac
+>> 1 = mfeat-fou
+>> 2 = mfeat-zer
